@@ -1,0 +1,613 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1">
+<title>Mängelliste</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&family=Inter:wght@400;500;600;700&family=Roboto+Mono:wght@500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --paper:#EDEEEA;
+    --card:#FFFFFF;
+    --ink:#1F2426;
+    --ink-soft:#5B6366;
+    --line:#D8D9D3;
+    --yellow:#F4B400;
+    --yellow-ink:#3A2E00;
+    --red:#C6432E;
+    --red-bg:#FBE7E2;
+    --green:#3E7D53;
+    --green-bg:#E4F1E7;
+    --amber:#B8860B;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;background:var(--paper);color:var(--ink);font-family:'Inter',sans-serif;-webkit-tap-highlight-color:transparent;}
+  body{min-height:100vh;padding-bottom:100px;}
+
+  .topbar{
+    position:sticky;top:0;z-index:20;
+    background:var(--paper);
+    padding:16px 16px 10px;
+    border-bottom:1px solid var(--line);
+  }
+  h1{
+    font-family:'Oswald',sans-serif;
+    font-weight:700;
+    font-size:26px;
+    letter-spacing:0.5px;
+    text-transform:uppercase;
+    margin:0 0 2px;
+    display:flex;
+    align-items:baseline;
+    gap:8px;
+  }
+  h1 span.count{
+    font-family:'Roboto Mono',monospace;
+    font-size:13px;
+    color:var(--ink-soft);
+    font-weight:500;
+    text-transform:none;
+    letter-spacing:0;
+  }
+  .subline{font-size:12.5px;color:var(--ink-soft);margin:0 0 12px;}
+
+  .searchrow{display:flex;gap:8px;margin-bottom:10px;}
+  .searchrow input{
+    flex:1;
+    padding:10px 12px;
+    border-radius:8px;
+    border:1px solid var(--line);
+    background:var(--card);
+    font-size:15px;
+    font-family:'Inter',sans-serif;
+    color:var(--ink);
+  }
+  .searchrow input:focus{outline:2px solid var(--yellow);outline-offset:-1px;}
+
+  .filters{display:flex;gap:6px;overflow-x:auto;padding-bottom:2px;}
+  .filters button{
+    flex:none;
+    border:1px solid var(--line);
+    background:var(--card);
+    color:var(--ink-soft);
+    font-family:'Inter',sans-serif;
+    font-weight:600;
+    font-size:12.5px;
+    padding:7px 12px;
+    border-radius:20px;
+    cursor:pointer;
+  }
+  .filters button.active{background:var(--ink);color:var(--paper);border-color:var(--ink);}
+
+  .list{padding:14px 14px 0;display:flex;flex-direction:column;gap:12px;}
+
+  .empty{
+    text-align:center;
+    padding:60px 20px;
+    color:var(--ink-soft);
+  }
+  .empty .big{font-family:'Oswald',sans-serif;font-size:18px;color:var(--ink);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px;}
+
+  .card{
+    background:var(--card);
+    border:1px solid var(--line);
+    border-radius:10px;
+    position:relative;
+    padding:14px 14px 14px 20px;
+    overflow:hidden;
+  }
+  .card::before{
+    content:"";
+    position:absolute;
+    left:0;top:0;bottom:0;
+    width:8px;
+    background-image:repeating-linear-gradient(to bottom, var(--line) 0 6px, transparent 6px 12px);
+    background-color:transparent;
+    border-right:1px dashed var(--line);
+  }
+  .card.open::before{background-image:repeating-linear-gradient(to bottom, var(--red) 0 6px, transparent 6px 12px);}
+  .card.done::before{background-image:repeating-linear-gradient(to bottom, var(--green) 0 6px, transparent 6px 12px);}
+
+  .card-top{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;}
+  .ticket-no{
+    font-family:'Roboto Mono',monospace;
+    font-size:11px;
+    color:var(--ink-soft);
+    letter-spacing:0.5px;
+  }
+  .card h3{
+    font-family:'Oswald',sans-serif;
+    font-size:17px;
+    font-weight:600;
+    margin:2px 0 4px;
+    color:var(--ink);
+  }
+  .meta-row{display:flex;flex-wrap:wrap;gap:4px 10px;font-size:12.5px;color:var(--ink-soft);margin-bottom:6px;}
+  .meta-row b{color:var(--ink);font-weight:600;}
+  .desc{font-size:13.5px;line-height:1.45;color:var(--ink);margin:6px 0 8px;white-space:pre-wrap;}
+
+  .badges{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px;}
+  .badge{
+    font-size:11px;
+    font-weight:700;
+    text-transform:uppercase;
+    letter-spacing:0.4px;
+    padding:3px 8px;
+    border-radius:5px;
+  }
+  .badge.status-offen{background:var(--red-bg);color:var(--red);}
+  .badge.status-behoben{background:var(--green-bg);color:var(--green);}
+  .badge.prio-hoch{background:#FDEDD3;color:var(--amber);}
+  .badge.prio-mittel{background:#F1F1EC;color:var(--ink-soft);}
+  .badge.prio-niedrig{background:#F1F1EC;color:var(--ink-soft);}
+
+  .thumbs{display:flex;gap:6px;overflow-x:auto;margin-bottom:10px;}
+  .thumbs img{
+    width:64px;height:64px;object-fit:cover;
+    border-radius:6px;border:1px solid var(--line);
+    flex:none;cursor:pointer;
+  }
+
+  .card-actions{display:flex;gap:8px;}
+  .card-actions button{
+    font-family:'Inter',sans-serif;
+    font-size:12.5px;
+    font-weight:600;
+    border:1px solid var(--line);
+    background:var(--paper);
+    color:var(--ink);
+    padding:7px 12px;
+    border-radius:7px;
+    cursor:pointer;
+  }
+  .card-actions button.danger{color:var(--red);}
+  .card-actions button.toggle{background:var(--ink);color:var(--paper);border-color:var(--ink);}
+
+  .fab{
+    position:fixed;
+    right:18px;bottom:22px;
+    width:58px;height:58px;
+    border-radius:50%;
+    background:var(--yellow);
+    color:var(--yellow-ink);
+    border:none;
+    font-size:30px;
+    line-height:58px;
+    text-align:center;
+    box-shadow:0 4px 14px rgba(0,0,0,0.25);
+    cursor:pointer;
+    z-index:30;
+  }
+  .fab-export{
+    position:fixed;
+    right:18px;bottom:90px;
+    width:44px;height:44px;
+    border-radius:50%;
+    background:var(--ink);
+    color:var(--paper);
+    border:none;
+    font-size:18px;
+    box-shadow:0 4px 14px rgba(0,0,0,0.25);
+    cursor:pointer;
+    z-index:30;
+    display:flex;align-items:center;justify-content:center;
+  }
+
+  /* Modal */
+  .overlay{
+    position:fixed;inset:0;
+    background:rgba(20,20,18,0.55);
+    display:none;
+    align-items:flex-end;
+    z-index:100;
+  }
+  .overlay.show{display:flex;}
+  .sheet{
+    background:var(--paper);
+    width:100%;
+    max-height:92vh;
+    overflow-y:auto;
+    border-radius:16px 16px 0 0;
+    padding:18px 18px 26px;
+    animation:slideup .18s ease-out;
+  }
+  @keyframes slideup{from{transform:translateY(20px);opacity:0;}to{transform:translateY(0);opacity:1;}}
+  .sheet-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;}
+  .sheet-head h2{font-family:'Oswald',sans-serif;text-transform:uppercase;font-size:19px;margin:0;}
+  .sheet-head button{background:none;border:none;font-size:22px;color:var(--ink-soft);cursor:pointer;padding:4px;}
+
+  label{display:block;font-size:12.5px;font-weight:600;color:var(--ink-soft);margin:14px 0 5px;text-transform:uppercase;letter-spacing:0.3px;}
+  input[type=text], textarea, select{
+    width:100%;
+    padding:11px 12px;
+    border-radius:8px;
+    border:1px solid var(--line);
+    background:var(--card);
+    font-family:'Inter',sans-serif;
+    font-size:15px;
+    color:var(--ink);
+  }
+  textarea{min-height:80px;resize:vertical;}
+  input:focus, textarea:focus, select:focus{outline:2px solid var(--yellow);outline-offset:-1px;}
+
+  .row2{display:flex;gap:10px;}
+  .row2>div{flex:1;}
+
+  .photo-add{
+    display:flex;gap:8px;flex-wrap:wrap;margin-top:6px;
+  }
+  .photo-thumb{position:relative;width:72px;height:72px;}
+  .photo-thumb img{width:100%;height:100%;object-fit:cover;border-radius:8px;border:1px solid var(--line);}
+  .photo-thumb button{
+    position:absolute;top:-6px;right:-6px;
+    width:20px;height:20px;border-radius:50%;
+    background:var(--red);color:#fff;border:none;
+    font-size:12px;line-height:20px;text-align:center;padding:0;cursor:pointer;
+  }
+  .add-photo-btn{
+    width:72px;height:72px;border-radius:8px;
+    border:1.5px dashed var(--line);
+    background:var(--card);
+    display:flex;align-items:center;justify-content:center;
+    font-size:26px;color:var(--ink-soft);
+    cursor:pointer;
+  }
+  input[type=file]{display:none;}
+
+  .save-btn{
+    width:100%;
+    margin-top:20px;
+    padding:14px;
+    background:var(--yellow);
+    color:var(--yellow-ink);
+    border:none;
+    border-radius:10px;
+    font-family:'Oswald',sans-serif;
+    font-size:16px;
+    text-transform:uppercase;
+    letter-spacing:0.5px;
+    font-weight:600;
+    cursor:pointer;
+  }
+
+  .lightbox{
+    position:fixed;inset:0;background:rgba(0,0,0,0.9);
+    display:none;align-items:center;justify-content:center;z-index:200;padding:20px;
+  }
+  .lightbox.show{display:flex;}
+  .lightbox img{max-width:100%;max-height:100%;border-radius:6px;}
+
+  .toast{
+    position:fixed;bottom:100px;left:50%;transform:translateX(-50%);
+    background:var(--ink);color:var(--paper);
+    padding:9px 16px;border-radius:20px;font-size:13px;
+    opacity:0;pointer-events:none;transition:opacity .2s;
+    z-index:300;
+  }
+  .toast.show{opacity:1;}
+
+  /* Print */
+  @media print{
+    .topbar,.fab,.fab-export,.card-actions{display:none !important;}
+    body{padding:0;background:#fff;}
+    .card{break-inside:avoid;border:1px solid #999;}
+    .card::before{display:none;}
+  }
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <h1>Mängelliste <span class="count" id="countLabel"></span></h1>
+  <p class="subline">Alle Einträge werden automatisch gespeichert – nur auf diesem Gerät.</p>
+  <div class="searchrow">
+    <input type="text" id="searchInput" placeholder="Suchen nach Ort, Bezeichnung, Beschreibung...">
+  </div>
+  <div class="filters" id="filterRow">
+    <button data-f="alle" class="active">Alle</button>
+    <button data-f="offen">Offen</button>
+    <button data-f="behoben">Behoben</button>
+  </div>
+</div>
+
+<div class="list" id="listContainer"></div>
+
+<button class="fab-export" id="exportBtn" title="Als Bericht drucken/exportieren">⎙</button>
+<button class="fab" id="addBtn" title="Neuer Mangel">+</button>
+
+<div class="overlay" id="overlay">
+  <div class="sheet">
+    <div class="sheet-head">
+      <h2 id="sheetTitle">Neuer Mangel</h2>
+      <button id="closeSheet">✕</button>
+    </div>
+
+    <label>Bezeichnung *</label>
+    <input type="text" id="f_title" placeholder="z. B. Riss in der Fliese">
+
+    <div class="row2">
+      <div>
+        <label>Ort</label>
+        <input type="text" id="f_ort" placeholder="z. B. Badezimmer, EG">
+      </div>
+      <div>
+        <label>Position</label>
+        <input type="text" id="f_position" placeholder="z. B. Wand links, 1m Höhe">
+      </div>
+    </div>
+
+    <label>Beschreibung</label>
+    <textarea id="f_beschreibung" placeholder="Was ist zu sehen, wie ist der Zustand..."></textarea>
+
+    <div class="row2">
+      <div>
+        <label>Status</label>
+        <select id="f_status">
+          <option value="offen">Offen</option>
+          <option value="behoben">Behoben</option>
+        </select>
+      </div>
+      <div>
+        <label>Priorität</label>
+        <select id="f_prio">
+          <option value="niedrig">Niedrig</option>
+          <option value="mittel" selected>Mittel</option>
+          <option value="hoch">Hoch</option>
+        </select>
+      </div>
+    </div>
+
+    <label>Fotos</label>
+    <div class="photo-add" id="photoAdd">
+      <label class="add-photo-btn" for="fileInput">＋</label>
+    </div>
+    <input type="file" id="fileInput" accept="image/*" capture="environment" multiple>
+
+    <button class="save-btn" id="saveBtn">Speichern</button>
+  </div>
+</div>
+
+<div class="lightbox" id="lightbox"><img id="lightboxImg" src=""></div>
+<div class="toast" id="toast"></div>
+
+<script>
+const STORAGE_KEY = 'maengel-eintraege';
+let entries = [];
+let editingId = null;
+let currentPhotos = [];
+let activeFilter = 'alle';
+let seqCounter = 1;
+
+const listEl = document.getElementById('listContainer');
+const overlay = document.getElementById('overlay');
+const toastEl = document.getElementById('toast');
+
+function showToast(msg){
+  toastEl.textContent = msg;
+  toastEl.classList.add('show');
+  setTimeout(()=>toastEl.classList.remove('show'), 1800);
+}
+
+async function loadEntries(){
+  try{
+    const res = await window.storage.get(STORAGE_KEY, false);
+    entries = res ? JSON.parse(res.value) : [];
+  }catch(e){
+    entries = [];
+  }
+  seqCounter = entries.length ? Math.max(...entries.map(e=>e.seq||0)) + 1 : 1;
+  render();
+}
+
+async function persist(){
+  try{
+    await window.storage.set(STORAGE_KEY, JSON.stringify(entries), false);
+  }catch(e){
+    showToast('Speichern fehlgeschlagen');
+  }
+}
+
+function fmtDate(iso){
+  const d = new Date(iso);
+  return d.toLocaleDateString('de-DE', {day:'2-digit',month:'2-digit',year:'numeric'}) + ' · ' + d.toLocaleTimeString('de-DE',{hour:'2-digit',minute:'2-digit'});
+}
+
+function render(){
+  const search = document.getElementById('searchInput').value.trim().toLowerCase();
+  let filtered = entries.filter(e => {
+    if(activeFilter !== 'alle' && e.status !== activeFilter) return false;
+    if(!search) return true;
+    const hay = [e.title, e.ort, e.position, e.beschreibung].join(' ').toLowerCase();
+    return hay.includes(search);
+  });
+  filtered.sort((a,b)=> new Date(b.datum) - new Date(a.datum));
+
+  document.getElementById('countLabel').textContent = entries.length ? `(${entries.length})` : '';
+
+  if(filtered.length === 0){
+    listEl.innerHTML = `<div class="empty"><div class="big">Keine Einträge</div>Tippe unten rechts auf „+“, um einen Mangel zu erfassen.</div>`;
+    return;
+  }
+
+  listEl.innerHTML = filtered.map(e => {
+    const thumbs = (e.images||[]).map(src => `<img src="${src}" onclick="openLightbox('${src.replace(/'/g,"")}')">`).join('');
+    return `
+    <div class="card ${e.status === 'offen' ? 'open' : 'done'}">
+      <div class="card-top">
+        <div>
+          <div class="ticket-no">#${String(e.seq).padStart(3,'0')} · ${fmtDate(e.datum)}</div>
+          <h3>${escapeHtml(e.title)}</h3>
+        </div>
+      </div>
+      <div class="meta-row">
+        ${e.ort ? `<span><b>Ort:</b> ${escapeHtml(e.ort)}</span>` : ''}
+        ${e.position ? `<span><b>Position:</b> ${escapeHtml(e.position)}</span>` : ''}
+      </div>
+      ${e.beschreibung ? `<div class="desc">${escapeHtml(e.beschreibung)}</div>` : ''}
+      <div class="badges">
+        <span class="badge status-${e.status}">${e.status === 'offen' ? 'Offen' : 'Behoben'}</span>
+        <span class="badge prio-${e.prio}">Priorität: ${e.prio}</span>
+      </div>
+      ${thumbs ? `<div class="thumbs">${thumbs}</div>` : ''}
+      <div class="card-actions">
+        <button onclick="editEntry('${e.id}')">Bearbeiten</button>
+        <button class="toggle" onclick="toggleStatus('${e.id}')">${e.status === 'offen' ? 'Als behoben markieren' : 'Wieder öffnen'}</button>
+        <button class="danger" onclick="deleteEntry('${e.id}')">Löschen</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function escapeHtml(str){
+  const div = document.createElement('div');
+  div.textContent = str || '';
+  return div.innerHTML;
+}
+
+function openLightbox(src){
+  document.getElementById('lightboxImg').src = src;
+  document.getElementById('lightbox').classList.add('show');
+}
+document.getElementById('lightbox').addEventListener('click', ()=>{
+  document.getElementById('lightbox').classList.remove('show');
+});
+
+function openSheet(entry){
+  editingId = entry ? entry.id : null;
+  document.getElementById('sheetTitle').textContent = entry ? 'Mangel bearbeiten' : 'Neuer Mangel';
+  document.getElementById('f_title').value = entry ? entry.title : '';
+  document.getElementById('f_ort').value = entry ? entry.ort : '';
+  document.getElementById('f_position').value = entry ? entry.position : '';
+  document.getElementById('f_beschreibung').value = entry ? entry.beschreibung : '';
+  document.getElementById('f_status').value = entry ? entry.status : 'offen';
+  document.getElementById('f_prio').value = entry ? entry.prio : 'mittel';
+  currentPhotos = entry ? [...(entry.images||[])] : [];
+  renderPhotoAdd();
+  overlay.classList.add('show');
+}
+
+function closeSheet(){
+  overlay.classList.remove('show');
+}
+
+function renderPhotoAdd(){
+  const container = document.getElementById('photoAdd');
+  const thumbsHtml = currentPhotos.map((src, i) => `
+    <div class="photo-thumb">
+      <img src="${src}">
+      <button onclick="removePhoto(${i})">✕</button>
+    </div>`).join('');
+  container.innerHTML = thumbsHtml + `<label class="add-photo-btn" for="fileInput">＋</label>`;
+}
+
+function removePhoto(i){
+  currentPhotos.splice(i,1);
+  renderPhotoAdd();
+}
+
+document.getElementById('fileInput').addEventListener('change', async (ev)=>{
+  const files = Array.from(ev.target.files);
+  for(const file of files){
+    const compressed = await compressImage(file);
+    currentPhotos.push(compressed);
+  }
+  renderPhotoAdd();
+  ev.target.value = '';
+});
+
+function compressImage(file){
+  return new Promise((resolve)=>{
+    const reader = new FileReader();
+    reader.onload = (e)=>{
+      const img = new Image();
+      img.onload = ()=>{
+        const maxDim = 900;
+        let w = img.width, h = img.height;
+        if(w > h && w > maxDim){ h = h*(maxDim/w); w = maxDim; }
+        else if(h > maxDim){ w = w*(maxDim/h); h = maxDim; }
+        const canvas = document.createElement('canvas');
+        canvas.width = w; canvas.height = h;
+        canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+        resolve(canvas.toDataURL('image/jpeg', 0.6));
+      };
+      img.src = e.target.result;
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
+document.getElementById('saveBtn').addEventListener('click', async ()=>{
+  const title = document.getElementById('f_title').value.trim();
+  if(!title){ showToast('Bitte eine Bezeichnung eingeben'); return; }
+
+  if(editingId){
+    const idx = entries.findIndex(e=>e.id===editingId);
+    entries[idx] = {
+      ...entries[idx],
+      title,
+      ort: document.getElementById('f_ort').value.trim(),
+      position: document.getElementById('f_position').value.trim(),
+      beschreibung: document.getElementById('f_beschreibung').value.trim(),
+      status: document.getElementById('f_status').value,
+      prio: document.getElementById('f_prio').value,
+      images: currentPhotos,
+    };
+  } else {
+    entries.push({
+      id: 'm_' + Date.now() + '_' + Math.random().toString(36).slice(2,7),
+      seq: seqCounter++,
+      title,
+      ort: document.getElementById('f_ort').value.trim(),
+      position: document.getElementById('f_position').value.trim(),
+      beschreibung: document.getElementById('f_beschreibung').value.trim(),
+      status: document.getElementById('f_status').value,
+      prio: document.getElementById('f_prio').value,
+      images: currentPhotos,
+      datum: new Date().toISOString(),
+    });
+  }
+  await persist();
+  closeSheet();
+  render();
+  showToast('Gespeichert');
+});
+
+function editEntry(id){
+  const e = entries.find(x=>x.id===id);
+  if(e) openSheet(e);
+}
+
+async function toggleStatus(id){
+  const e = entries.find(x=>x.id===id);
+  if(!e) return;
+  e.status = e.status === 'offen' ? 'behoben' : 'offen';
+  await persist();
+  render();
+}
+
+async function deleteEntry(id){
+  if(!confirm('Diesen Eintrag wirklich löschen?')) return;
+  entries = entries.filter(x=>x.id!==id);
+  await persist();
+  render();
+  showToast('Gelöscht');
+}
+
+document.getElementById('addBtn').addEventListener('click', ()=>openSheet(null));
+document.getElementById('closeSheet').addEventListener('click', closeSheet);
+document.getElementById('searchInput').addEventListener('input', render);
+document.getElementById('exportBtn').addEventListener('click', ()=>window.print());
+
+document.getElementById('filterRow').addEventListener('click', (ev)=>{
+  if(ev.target.tagName !== 'BUTTON') return;
+  document.querySelectorAll('#filterRow button').forEach(b=>b.classList.remove('active'));
+  ev.target.classList.add('active');
+  activeFilter = ev.target.dataset.f;
+  render();
+});
+
+loadEntries();
+</script>
+</body>
+</html>
